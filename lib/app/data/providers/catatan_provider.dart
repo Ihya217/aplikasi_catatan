@@ -1,14 +1,12 @@
 import 'package:get/get.dart';
 
-import '../models/catatan_model.dart';
-
 class CatatanProvider extends GetConnect {
   final String url =
       "https://aplikasi-catatan-bee23-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
   Future<dynamic> getAllCatatan() async {
     final response = await get("$url" "catatan.json");
-    return Catatan.fromJson(response.body);
+    return response.body;
   }
 
   Future<dynamic> postCatatan(judul, isi) async {
@@ -23,7 +21,7 @@ class CatatanProvider extends GetConnect {
       await delete("$url" "catatan/$id.json");
 
   Future<void> editCatatan(String id, String judul, String isi) async {
-    await patch('$url' + "catatan/$id.json", {
+    await patch('$url' "catatan/$id.json", {
       'judul': judul,
       'isi': isi,
     });

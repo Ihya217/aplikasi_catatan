@@ -1,10 +1,10 @@
-// ignore_for_file: unnecessary_overrides
+// ignore_for_file: unnecessary_overrides, avoid_print
 
-import 'package:aplikasi_catatan/app/data/providers/catatan_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/models/catatan_model.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeController extends GetxController with StateMixin<List<dynamic>> {
   //TODO: Implement HomeController
@@ -13,30 +13,60 @@ class HomeController extends GetxController with StateMixin<List<dynamic>> {
   FirebaseDatabase database = FirebaseDatabase.instance;
 
   @override
-  void onInit() {
+  void onInit() async {
     super.onInit();
-    getCatatan2();
+    getCatatan();
   }
 
-  Future<void> getCatatan() async {
-    final ref = FirebaseDatabase.instance.ref();
-    final snapshot = await ref.child('catatan').get();
-    if (snapshot.exists) {
-      print(snapshot.value);
-    } else {
-      print('No data available.');
+  CollectionReference catatanCollection =
+      FirebaseFirestore.instance.collection('catatan');
+
+  void getCatatan() {
+    try {
+      catatanCollection.snapshots().listen((QuerySnapshot snapshot) {
+        catatan.value = snapshot.docs
+            .map((doc) => Catatan(
+                  id: doc.id,
+                  judul: doc['judul'],
+                  isi: doc['isi'],
+                ))
+            .toList();
+      });
+    } catch (e) {
+      print('Error fetching items: $e');
     }
   }
 
-  void getCatatan2() {
-    CatatanProvider().getAllCatatan().then((response) {
-      final data = Catatan(
-        id: response["name"],
-        judul: response["judul"],
-        isi: response["isi"],
-      );
-      print(data);
-    });
+  Future<void> addCatatan(judul, isi) {
+    return catatanCollection.add({
+      'judul': judul,
+      'isi': isi,
+    }).then((value) {
+      print("Data Ditambahkan");
+      Get.back();
+      // ignore: invalid_return_type_for_catch_error
+    }).catchError((error) => print("Failed to add user: $error"));
+  }
+
+  Future<void> removeCatatan(String id) {
+    return catatanCollection
+        .doc(id)
+        .delete()
+        .then((value) => dialogError("$id dihapus"));
+  }
+
+  Future<void> editCatatan(String id, judul, isi) {
+    return catatanCollection.doc(id).update({
+      'judul': judul,
+      'isi': isi,
+    }).then((value) {
+      Get.back();
+      // ignore: invalid_return_type_for_catch_error
+    }).catchError((error) => print("Failed to update user: $error"));
+  }
+
+  Catatan findById(String id) {
+    return catatan.firstWhere((element) => element.id == id);
   }
 
   void dialogError(String msg) {
@@ -46,41 +76,5 @@ class HomeController extends GetxController with StateMixin<List<dynamic>> {
           msg,
           textAlign: TextAlign.center,
         ));
-  }
-
-  void addCatatan(String judul, isi) {
-    if (judul != '' && isi != '') {
-      CatatanProvider().postCatatan(judul, isi).then((response) {
-        final data = Catatan(
-          id: response["name"],
-          judul: judul,
-          isi: isi,
-        );
-        catatan.add(data);
-        Get.back();
-      });
-    } else {
-      dialogError("Semua Input Harus Diisi");
-    }
-  }
-
-  void removeCatatan(String id) {
-    CatatanProvider()
-        .deleteCatatan(id)
-        .then((value) => catatan.removeWhere((element) => element.id == id));
-  }
-
-  void editCatatan(String id, judul, isi) {
-    CatatanProvider().editCatatan(id, judul, isi).then((value) {
-      final data = findById(id);
-      data.judul = judul;
-      data.isi = isi;
-      catatan.refresh();
-      Get.back();
-    });
-  }
-
-  Catatan findById(String id) {
-    return catatan.firstWhere((element) => element.id == id);
   }
 }
